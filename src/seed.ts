@@ -1,7 +1,7 @@
 import type { Exercise, ExType } from './types';
 
 const e = (id: string, name: string, muscles: string[], equipment: string, type: ExType, restSec: number): Exercise =>
-  ({ id: 'ex-' + id, name, muscles, equipment, type, notes: '', archived: false, restSec });
+  ({ id: 'ex-' + id, name, muscles, equipment, type, notes: '', archived: false, restSec, updatedAt: 0 });
 
 export const SEED: Exercise[] = [
   e('squat', 'Back Squat', ['Quads', 'Glutes'], 'Barbell', 'wr', 150),

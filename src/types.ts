@@ -9,6 +9,7 @@ export interface Exercise {
   notes: string;
   archived: boolean;
   restSec: number;
+  updatedAt?: number; // stamped automatically by db hooks; used for sync
 }
 
 export interface RoutineItem {
@@ -22,6 +23,7 @@ export interface Routine {
   id: string;
   name: string;
   items: RoutineItem[];
+  updatedAt?: number;
 }
 
 export interface Session {
@@ -35,6 +37,7 @@ export interface Session {
   effort: number | null;
   status: 'active' | 'done';
   exerciseIds: string[]; // ordered
+  updatedAt?: number;
 }
 
 export interface SetRow {
@@ -51,6 +54,7 @@ export interface SetRow {
   rpe: number | null;
   warmup: boolean;
   done: boolean;
+  updatedAt?: number;
 }
 
 export const MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core', 'Forearms', 'Cardio'];

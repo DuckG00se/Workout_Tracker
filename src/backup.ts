@@ -1,5 +1,7 @@
 import { db, setSetting } from './db';
 import { localDate } from './calc';
+import { resetSyncCursors, SYNC_META_KEYS } from './sync';
+import type { Exercise, Routine, Session, SetRow } from './types';
 
 function download(name: string, text: string, mime: string) {
   const url = URL.createObjectURL(new Blob([text], { type: mime }));
@@ -21,7 +23,7 @@ export async function exportJSON() {
     routines: await db.routines.toArray(),
     sessions: await db.sessions.toArray(),
     sets: await db.sets.toArray(),
-    meta: (await db.meta.toArray()).filter((m) => m.key !== 'lastExport'),
+    meta: (await db.meta.toArray()).filter((m) => m.key !== 'lastExport' && !SYNC_META_KEYS.includes(m.key)),
   };
   download(`logbook-backup-${localDate()}.json`, JSON.stringify(data), 'application/json');
   await setSetting('lastExport', Date.now());
@@ -35,16 +37,21 @@ export async function importJSON(text: string) {
   // The restored data matches the file it came from, so keep the reminder clock at the newer of the two.
   const prevExport = ((await db.meta.get('lastExport'))?.value as number | undefined) ?? 0;
   const fileExport = Date.parse(d.exportedAt) || 0;
-  await db.transaction('rw', [db.exercises, db.routines, db.sessions, db.sets, db.meta], async () => {
-    await Promise.all([db.exercises.clear(), db.routines.clear(), db.sessions.clear(), db.sets.clear(), db.meta.clear()]);
-    await db.exercises.bulkPut(d.exercises);
-    await db.routines.bulkPut(d.routines ?? []);
-    await db.sessions.bulkPut(d.sessions);
-    await db.sets.bulkPut(d.sets);
-    await db.meta.bulkPut([...(d.meta ?? []), { key: 'seeded', value: true }]);
+  // Keep this device's sync connection. Imported records are stamped "now" so, once synced, the import wins.
+  const syncMeta = (await db.meta.bulkGet(SYNC_META_KEYS)).filter((m): m is NonNullable<typeof m> => !!m);
+  const now = Date.now();
+  const stamp = <T,>(rows: T[]) => rows.map((r) => ({ ...r, updatedAt: now }));
+  await db.transaction('rw', [db.exercises, db.routines, db.sessions, db.sets, db.meta, db.tombstones], async () => {
+    await Promise.all([db.exercises.clear(), db.routines.clear(), db.sessions.clear(), db.sets.clear(), db.meta.clear(), db.tombstones.clear()]);
+    await db.exercises.bulkPut(stamp<Exercise>(d.exercises));
+    await db.routines.bulkPut(stamp<Routine>(d.routines ?? []));
+    await db.sessions.bulkPut(stamp<Session>(d.sessions));
+    await db.sets.bulkPut(stamp<SetRow>(d.sets));
+    await db.meta.bulkPut([...(d.meta ?? []).filter((m: { key: string }) => !SYNC_META_KEYS.includes(m.key)), ...syncMeta, { key: 'seeded', value: true }]);
     const last = Math.max(prevExport, fileExport);
     if (last) await db.meta.put({ key: 'lastExport', value: last });
   });
+  await resetSyncCursors();
   const theme = (await db.meta.get('theme'))?.value;
   if (theme === 'light' || theme === 'dark') await setSetting('theme', theme);
 }

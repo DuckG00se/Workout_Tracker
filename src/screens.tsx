@@ -7,6 +7,7 @@ import { exportCSV, exportJSON, importJSON } from './backup';
 import { setSetting } from './db';
 import { fmtMetric, fmtMin, fmtVol, findPRs, isWork, localDate, parseDate, setVolume } from './calc';
 import { ExercisePicker } from './pickers';
+import { connect, disconnect, generateKey, getSyncKey, syncNow, useSync } from './sync';
 
 const DAY = 86400000;
 
@@ -315,6 +316,7 @@ export function Data() {
     <div class="screen">
       <Header title="Data & settings" />
       <main class="stack">
+        <SyncCard />
         <section class="card pad stack">
           <h2 class="sec">Backup</h2>
           <p class="muted sm">{s.lastExport ? `Last backup: ${new Date(s.lastExport).toLocaleDateString('en-GB')}` : 'No backup yet.'} Storage is {persisted ? 'protected' : 'not guaranteed'} on this device.</p>
@@ -348,6 +350,60 @@ export function Data() {
         </section>
       </main>
     </div>
+  );
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  idle: 'Up to date.',
+  syncing: 'Syncing…',
+  offline: 'Offline. Will retry when you are back online.',
+  auth: 'The server rejected this key.',
+  error: 'Sync failed.',
+};
+
+function SyncCard() {
+  const s = useSync();
+  const key = useLive(async () => (await getSyncKey()) ?? null);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [show, setShow] = useState(false);
+  if (key === undefined) return null;
+
+  const doConnect = async () => {
+    setBusy(true);
+    try { await connect(input); setInput(''); toast('Sync connected'); } catch (e) { toast((e as Error).message); }
+    setBusy(false);
+  };
+
+  if (!key) {
+    return (
+      <section class="card pad stack">
+        <h2 class="sec">Sync across devices</h2>
+        <p class="muted sm">Keeps your phone and laptop in step through your own Cloudflare database. Every device uses the same sync key. The app still works offline.</p>
+        <input class="field num" placeholder="Paste your sync key" value={input} autocapitalize="off" autocomplete="off" spellcheck={false} onInput={(e) => setInput((e.currentTarget as HTMLInputElement).value)} />
+        <button class="btn primary wide" disabled={busy || !input.trim()} onClick={doConnect}>{busy ? 'Connecting…' : 'Connect'}</button>
+        <button class="btn ghost wide" onClick={() => setInput(generateKey())}>First device? Generate a new key</button>
+        {input && <p class="muted sm">New key above. Before connecting, add it in Cloudflare as a secret named <b>SYNC_KEY</b> (Settings → Variables and secrets), then paste the same key on your other devices.</p>}
+      </section>
+    );
+  }
+
+  return (
+    <section class="card pad stack">
+      <h2 class="sec">Sync across devices</h2>
+      <p class={'sm ' + (s.status === 'auth' || s.status === 'error' ? 'down' : 'muted')}>
+        {s.status === 'syncing' && s.progress ? s.progress : STATUS_TEXT[s.status] ?? 'Connected'}
+        {s.error && s.status !== 'auth' ? ` ${s.error}` : ''}
+        {s.last ? ` Last synced ${new Date(s.last).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.` : ''}
+      </p>
+      <button class="btn primary wide" disabled={s.status === 'syncing'} onClick={() => syncNow()}>Sync now</button>
+      {show && <input class="field num" readOnly value={key} onFocus={(e) => (e.currentTarget as HTMLInputElement).select()} />}
+      <div class="row gap">
+        <button class="btn ghost grow" onClick={() => setShow(!show)}>{show ? 'Hide key' : 'Show key'}</button>
+        <button class="btn ghost grow" onClick={async () => { try { await navigator.clipboard.writeText(key); toast('Key copied'); } catch { setShow(true); } }}>Copy key</button>
+      </div>
+      <button class="btn danger wide" onClick={async () => { if (await ask('Disconnect sync on this device? Your data stays here; it just stops syncing.', 'Disconnect', true)) disconnect(); }}>Disconnect</button>
+    </section>
   );
 }
 

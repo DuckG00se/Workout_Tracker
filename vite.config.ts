@@ -4,13 +4,15 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: '/',
+  // `npm run dev` + `npx wrangler dev --port 8787` in another terminal gives a local sync backend.
+  server: { proxy: { '/api': 'http://127.0.0.1:8787' } },
   plugins: [
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,woff}'], navigateFallback: 'index.html' },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,woff}'], navigateFallback: 'index.html', navigateFallbackDenylist: [/^\/api\//] },
       manifest: {
         name: 'Logbook — Gym Tracker',
         short_name: 'Logbook',

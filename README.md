@@ -13,9 +13,21 @@ npm run build     # type-check + production build into dist/
 npm run preview   # serve the production build (service worker active)
 ```
 
-## Deploy (Cloudflare Pages)
+## Deploy (Cloudflare Workers + static assets)
 
-Build command `npm run build`, output directory `dist`, no environment variables needed.
+`wrangler.jsonc` defines one Worker named `workout-tracker`: it serves `dist/` and runs `worker/index.ts` for `/api/*`.
+Build command `npm run build`, deploy command `npx wrangler deploy` (the default for Workers Builds).
+
+## Sync across devices
+
+Local IndexedDB stays the source of truth (works offline). With sync on, each device pushes its changes to a D1 database through `/api/sync` and pulls everyone else's. Newest `updatedAt` wins per record; deletes sync too. Finished sessions, exercises and routines sync; an in-progress workout stays on its device.
+
+One-time setup:
+1. D1 database `workout-tracker` with the schema in `worker/schema.sql` (already applied; the `database_id` is in `wrangler.jsonc`).
+2. In Cloudflare: Worker → Settings → Variables and secrets → add a **secret** named `SYNC_KEY` (any long random string; the app's "Generate" button makes one).
+3. In the app: Data → Sync across devices → paste the same key on every device → Connect.
+
+Local sync testing: `npx wrangler d1 execute workout-tracker --local --file worker/schema.sql`, put `SYNC_KEY=...` in `.dev.vars`, run `npx wrangler dev --port 8787` and `npm run dev` (Vite proxies `/api` to it).
 
 ## Phase 1 (done)
 

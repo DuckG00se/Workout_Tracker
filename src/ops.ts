@@ -138,6 +138,9 @@ export async function finishSession(sessionId: string) {
     const left = sets.filter((s) => s.done);
     const ids = session.exerciseIds.filter((id) => left.some((s) => s.exerciseId === id));
     await db.sessions.update(sessionId, { status: 'done', endedAt: Date.now(), exerciseIds: ids });
+    // Sets of an active session are not synced; touching them now makes them eligible for the next push.
+    const now = Date.now();
+    await db.sets.where('sessionId').equals(sessionId).modify((s: SetRow) => { s.updatedAt = now; });
   });
   return true;
 }

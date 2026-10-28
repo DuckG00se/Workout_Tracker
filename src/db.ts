@@ -3,12 +3,15 @@ import { useEffect, useState } from 'preact/hooks';
 import type { Exercise, Routine, Session, SetRow } from './types';
 import { SEED } from './seed';
 
+export interface Tombstone { key: string; tbl: string; id: string; deletedAt: number }
+
 class AppDB extends Dexie {
   exercises!: Dexie.Table<Exercise, string>;
   routines!: Dexie.Table<Routine, string>;
   sessions!: Dexie.Table<Session, string>;
   sets!: Dexie.Table<SetRow, string>;
   meta!: Dexie.Table<{ key: string; value: unknown }, string>;
+  tombstones!: Dexie.Table<Tombstone, string>;
 
   constructor() {
     super('gym-tracker');
@@ -19,12 +22,58 @@ class AppDB extends Dexie {
       sets: 'id, sessionId, exerciseId, ts, [exerciseId+ts]',
       meta: 'key',
     });
+    // v2: every synced record carries `updatedAt` (last local or remote change); deletes leave a tombstone.
+    this.version(2)
+      .stores({
+        exercises: 'id, name, archived, updatedAt',
+        routines: 'id, name, updatedAt',
+        sessions: 'id, date, status, startedAt, updatedAt',
+        sets: 'id, sessionId, exerciseId, ts, [exerciseId+ts], updatedAt',
+        meta: 'key',
+        tombstones: 'key, deletedAt',
+      })
+      .upgrade(async (tx) => {
+        const now = Date.now();
+        // Built-in exercises get 0 so they never override an edited copy from another device.
+        await tx.table('exercises').toCollection().modify((e: any) => { e.updatedAt = String(e.id).startsWith('ex-') ? 0 : now; });
+        for (const t of ['routines', 'sessions', 'sets']) await tx.table(t).toCollection().modify((r: any) => { r.updatedAt = now; });
+      });
   }
 }
 
 export const db = new AppDB();
 
 export const uid = () => crypto.randomUUID();
+
+/* ---------- change tracking for sync ---------- */
+export const SYNCED_TABLES = ['exercises', 'routines', 'sessions', 'sets'] as const;
+
+let writeListener: () => void = () => {};
+export const onLocalWrite = (fn: () => void) => { writeListener = fn; };
+
+/** Keys whose delete came from a remote device: they must not leave a (newer) local tombstone. */
+export const remoteDeletes = new Set<string>();
+
+for (const name of SYNCED_TABLES) {
+  const table = db.table(name);
+  table.hook('creating', (_pk, obj: any) => {
+    if (obj.updatedAt === undefined) obj.updatedAt = Date.now();
+    writeListener();
+  });
+  table.hook('updating', (mods: any) => {
+    writeListener();
+    // Writes that already carry updatedAt (remote apply, explicit touch) keep it; everything else is a local edit.
+    return 'updatedAt' in mods ? undefined : { updatedAt: Date.now() };
+  });
+  table.hook('deleting', (pk) => {
+    writeListener();
+    const id = String(pk);
+    const key = `${name}:${id}`;
+    if (remoteDeletes.has(key)) return;
+    // Hooks cannot await other tables, so record the tombstone right after this operation.
+    setTimeout(() => Dexie.ignoreTransaction(() => db.tombstones.put({ key, tbl: name, id, deletedAt: Date.now() })).catch(() => {}), 0);
+  });
+}
 
 export interface Settings {
   weightStep: number;
