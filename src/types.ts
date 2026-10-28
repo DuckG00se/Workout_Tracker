@@ -37,6 +37,8 @@ export interface Session {
   effort: number | null;
   status: 'active' | 'done';
   exerciseIds: string[]; // ordered
+  /** Present on runs: one timed set of `ex-run` holds duration, distance and effort. */
+  run?: { type: 'quality' | 'easy' | 'long'; week: number };
   updatedAt?: number;
 }
 

@@ -5,31 +5,40 @@ import { db, getSettings, Settings, useLive } from './db';
 import { Exercise, MUSCLES, Session, SetRow } from './types';
 import { describeSet, fmtKg, isWork, localDate, parseDate, weekStart } from './calc';
 import { Chips, Header, Sheet } from './ui';
+import { RunStats } from './run';
 import { metricsFor, MIN_WEEK, Metric, muscleSets, Point, prTable, prevWeek, series, streaks, weeklyCounts } from './stats';
 
-type Tab = 'overview' | 'lifts' | 'prs';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['lifts', 'Lifts'], ['prs', 'Records']];
+type Tab = 'overview' | 'lifts' | 'prs' | 'runs';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['lifts', 'Lifts'], ['prs', 'Records'], ['runs', 'Runs']];
 const shortDate = (d: string) => parseDate(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
 export function Progress() {
   const [tab, setTab] = useState<Tab>('overview');
   const [exId, setExId] = useState<string | null>(null);
   const data = useLive(async () => {
-    const sessions = await db.sessions.where('status').equals('done').toArray();
+    // Runs have their own tab; the strength stats (streak, sets per muscle, lifts) leave them out.
+    const all = await db.sessions.where('status').equals('done').toArray();
+    const sessions = all.filter((s) => !s.run);
     const ids = new Set(sessions.map((s) => s.id));
-    const sets = (await db.sets.toArray()).filter((s) => ids.has(s.sessionId));
-    return { sessions, sets, exercises: await db.exercises.toArray(), settings: await getSettings() };
+    const allSets = await db.sets.toArray();
+    const sets = allSets.filter((s) => ids.has(s.sessionId));
+    const runs = all.filter((s) => s.run);
+    const runIds = new Set(runs.map((s) => s.id));
+    const runSets = allSets.filter((s) => runIds.has(s.sessionId));
+    return { sessions, sets, runs, runSets, exercises: await db.exercises.toArray(), settings: await getSettings() };
   });
 
   return (
     <div class="screen">
       <Header title="Progress" />
-      <div class="seg" role="tablist">
+      <div class="seg four" role="tablist">
         {TABS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} class={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{label}</button>
         ))}
       </div>
-      {!data ? <p class="muted pad">Loading…</p> : !data.sessions.length ? (
+      {!data ? <p class="muted pad">Loading…</p> : tab === 'runs' ? (
+        <main class="stack"><RunStats runs={data.runs} sets={data.runSets} /></main>
+      ) : !data.sessions.length ? (
         <p class="muted center-text pad">Finish your first workout and your progress shows up here.</p>
       ) : (
         <main class="stack">

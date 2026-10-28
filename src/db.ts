@@ -1,7 +1,7 @@
 import Dexie, { liveQuery } from 'dexie';
 import { useEffect, useState } from 'preact/hooks';
 import type { Exercise, Routine, Session, SetRow } from './types';
-import { SEED } from './seed';
+import { PLAN_ROUTINES, SEED } from './seed';
 
 export interface Tombstone { key: string; tbl: string; id: string; deletedAt: number }
 
@@ -81,10 +81,12 @@ export interface Settings {
   sound: boolean;
   vibrate: boolean;
   notify: boolean;
+  voice: boolean;
   weeklyTarget: number;
   lastExport: number | null;
+  runPlanStart: string | null; // Monday of plan week 1 (this device only)
 }
-export const DEFAULTS: Settings = { weightStep: 2.5, theme: 'dark', sound: true, vibrate: true, notify: false, weeklyTarget: 3, lastExport: null };
+export const DEFAULTS: Settings = { weightStep: 2.5, theme: 'dark', sound: true, vibrate: true, notify: false, voice: true, weeklyTarget: 3, lastExport: null, runPlanStart: null };
 
 export async function getSettings(): Promise<Settings> {
   const rows = await db.meta.toArray();
@@ -117,6 +119,17 @@ export async function initDb() {
       await db.exercises.bulkPut(SEED);
       await db.meta.put({ key: 'seeded', value: true });
     });
+  } else {
+    // Built-ins added in later versions (never touches ones you already have or edited).
+    const have = new Set(await db.exercises.toCollection().primaryKeys());
+    const fresh = SEED.filter((e) => !have.has(e.id));
+    if (fresh.length) await db.exercises.bulkAdd(fresh);
+  }
+  if (!(await db.meta.get('planRoutines'))) {
+    // updatedAt 0, like built-in exercises: any real edit (on any device) wins, and devices don't fight over them.
+    const have = new Set(await db.routines.toCollection().primaryKeys());
+    await db.routines.bulkAdd(PLAN_ROUTINES.filter((r) => !have.has(r.id)));
+    await db.meta.put({ key: 'planRoutines', value: true });
   }
   try { await navigator.storage?.persist?.(); } catch {}
   const s = await getSettings();

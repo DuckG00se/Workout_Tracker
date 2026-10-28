@@ -5,8 +5,10 @@ import { duplicateRoutine, getActiveSession, startSession } from './ops';
 import { ask, Chips, go, Header, Sheet, Stepper, toast } from './ui';
 import { exportCSV, exportJSON, importJSON } from './backup';
 import { setSetting } from './db';
-import { fmtMetric, fmtMin, fmtVol, findPRs, isWork, localDate, parseDate, setVolume } from './calc';
+import { fmtDur, fmtKg, fmtMetric, fmtMin, fmtVol, findPRs, isWork, localDate, parseDate, setVolume } from './calc';
 import { ExercisePicker } from './pickers';
+import { paceText, runLine } from './run';
+import { useRun } from './runner';
 import { connect, disconnect, generateKey, getSyncKey, syncNow, useSync } from './sync';
 
 const DAY = 86400000;
@@ -14,6 +16,7 @@ const DAY = 86400000;
 /* ================= HOME ================= */
 export function Home() {
   const active = useLive(async () => (await getActiveSession()) ?? null);
+  const run = useRun();
   const routines = useLive(() => db.routines.toArray());
   const settings = useLive(getSettings);
   const recent = useLive(() => db.sessions.where('status').equals('done').reverse().sortBy('startedAt').then((r) => r.reverse().slice(0, 3)));
@@ -29,6 +32,13 @@ export function Home() {
             <p><b>Back up your data.</b> {settings!.lastExport ? `Last backup ${Math.floor((Date.now() - settings!.lastExport) / DAY)} days ago.` : 'You have never exported a backup.'}</p>
             <button class="btn primary small" onClick={async () => { await exportJSON(); toast('Backup saved'); }}>Export now</button>
           </div>
+        )}
+        {run.active && (
+          <button class="resume" onClick={() => go('/run')}>
+            <small>RUN {run.stopped ? 'TO SAVE' : run.paused ? 'PAUSED' : 'IN PROGRESS'}</small>
+            <b>{run.stopped ? 'Run finished' : run.phases[run.phaseIdx]?.label ?? 'Run'}</b>
+            <span>Open →</span>
+          </button>
         )}
         {active && (
           <button class="resume" onClick={() => go(`/session/${active.id}`)}>
@@ -77,7 +87,7 @@ function SessionList({ sessions }: { sessions: import('./types').Session[] }) {
         return (
           <button key={s.id} class="list-item" onClick={() => go(`/session/${s.id}`)}>
             <span>{parseDate(s.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · {s.routineName || 'Workout'}</span>
-            <small class="muted">{mine.length} sets · {fmtVol(vol)}{s.endedAt ? ` · ${fmtMin(s.endedAt - s.startedAt)}` : ''}</small>
+            <small class="muted">{s.run ? runLine(mine[0]) : `${mine.length} sets · ${fmtVol(vol)}${s.endedAt ? ` · ${fmtMin(s.endedAt - s.startedAt)}` : ''}`}</small>
           </button>
         );
       })}
@@ -139,16 +149,27 @@ export function Summary({ id }: { id: string }) {
   const vol = work.filter((s) => !s.warmup).reduce((a, s) => a + setVolume(s, types.get(s.exerciseId) ?? 'wr'), 0);
   const prs = findPRs(sets, history, types);
   const dur = session.endedAt ? session.endedAt - session.startedAt : 0;
+  const run = session.run ? sets.find((s) => s.done) : undefined;
 
   return (
     <div class="screen">
-      <Header title="Workout complete" back="/" />
+      <Header title={session.run ? 'Run complete' : 'Workout complete'} back="/" />
       <main class="stack">
         <p class="eyebrow">{parseDate(session.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}{session.routineName ? ` · ${session.routineName}` : ''}</p>
         <div class="stats">
-          <div><b class="num">{fmtMin(dur)}</b><small>Duration</small></div>
-          <div><b class="num">{fmtVol(vol)}</b><small>Volume</small></div>
-          <div><b class="num">{work.length}</b><small>Sets</small></div>
+          {run ? (
+            <>
+              <div><b class="num">{fmtDur(run.duration)}</b><small>Time</small></div>
+              {run.distance > 0 && <div><b class="num">{fmtKg(run.distance)} km</b><small>Distance</small></div>}
+              {run.distance > 0 && <div><b class="num">{paceText(run.duration, run.distance).replace(' /km', '')}</b><small>Pace (min/km)</small></div>}
+            </>
+          ) : (
+            <>
+              <div><b class="num">{fmtMin(dur)}</b><small>Duration</small></div>
+              <div><b class="num">{fmtVol(vol)}</b><small>Volume</small></div>
+              <div><b class="num">{work.length}</b><small>Sets</small></div>
+            </>
+          )}
           {session.effort && <div><b class="num">{session.effort}/10</b><small>Effort</small></div>}
         </div>
         <section>
@@ -338,7 +359,8 @@ export function Data() {
           <Chips options={['dark', 'light']} value={s.theme} onChange={(v) => setSetting('theme', v as 'dark' | 'light')} render={(v) => (v === 'dark' ? 'Dark' : 'Light')} />
           <Stepper label="Weight step" unit="kg" value={s.weightStep} step={0.5} min={0.5} onChange={(v) => setSetting('weightStep', v)} />
           <Stepper label="Weekly target" unit="sessions" value={s.weeklyTarget} step={1} min={1} max={7} decimals={0} onChange={(v) => setSetting('weeklyTarget', v)} />
-          <Toggle label="Rest timer sound" on={s.sound} onChange={(v) => setSetting('sound', v)} />
+          <Toggle label="Sound (rest and run timers)" on={s.sound} onChange={(v) => setSetting('sound', v)} />
+          <Toggle label="Voice cues on runs" on={s.voice} onChange={(v) => setSetting('voice', v)} />
           <Toggle label="Vibration" on={s.vibrate} onChange={(v) => setSetting('vibrate', v)} />
           <Toggle label="Notify when rest ends (app in background)" on={s.notify} onChange={async (v) => {
             if (v && 'Notification' in window && Notification.permission !== 'granted') {

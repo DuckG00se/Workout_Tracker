@@ -48,6 +48,16 @@ Local sync testing: `npx wrangler d1 execute workout-tracker --local --file work
 - **Sets per muscle:** working sets this week or last week. A set counts 1 for an exercise's first-listed muscle and 0.5 for the others.
 - **Records:** best est. 1RM, heaviest and best set volume per exercise with the date, tap to open its chart.
 
+## Running (Run tab)
+
+Built from the 5-Day Hybrid Training Plan PDF.
+
+- **Plan:** week 1 starts on a Monday you set (default: next Monday). The tab shows this week's Tue quality run, Wed easy run and Sat long run for the current plan week, and repeats from week 3 after week 6. A Fri conditioning finisher timer (10 × 30 s hard / 60 s easy) is included and isn't logged.
+- **Interval timer:** warm-up, hard/easy reps, cool-down (and optional run-walk blocks for easy/long runs). Each phase change has its own beep pattern, a 3-2-1 countdown, halfway and one-minute-left calls on long phases, vibration, and spoken cues ("Hard. Rep 3 of 6. One minute.").
+- **Locked screen:** beeps are scheduled ahead on the Web Audio clock and a silent looping `<audio>` + MediaSession keeps the page alive (lock-screen pause/skip controls on Android). Voice and vibration run from a JS timer, so they are best-effort with the screen off. Use "Alarm check" on the Run tab and test once on the phone.
+- **Logging:** at the end enter distance (optional), RPE and notes. A run is saved as a finished session with an `ex-run` set, so it syncs, backs up and shows in History. Progress → Runs charts minutes per week, longest run and fastest pace. Runs are left out of the strength streak and muscle stats.
+- Days 1, 3 and 4 of the plan are added once as routines (`Day 1 · Lower strength`, …) with the missing exercises added to the library.
+
 ## Notes
 
 - Volume and PRs count completed working sets only (warm-ups excluded). Bodyweight exercises use optional added load.

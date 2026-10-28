@@ -1,4 +1,4 @@
-import type { Exercise, ExType } from './types';
+import type { Exercise, ExType, Routine, RoutineItem } from './types';
 
 const e = (id: string, name: string, muscles: string[], equipment: string, type: ExType, restSec: number): Exercise =>
   ({ id: 'ex-' + id, name, muscles, equipment, type, notes: '', archived: false, restSec, updatedAt: 0 });
@@ -47,4 +47,31 @@ export const SEED: Exercise[] = [
   e('bike', 'Stationary Bike', ['Cardio'], 'Machine', 'timedist', 60),
   e('rower', 'Rowing Machine', ['Cardio'], 'Machine', 'timedist', 60),
   e('stairs', 'Stair Climber', ['Cardio'], 'Machine', 'time', 60),
+  // added with the 5-day hybrid plan
+  e('run', 'Run', ['Cardio'], 'Other', 'timedist', 0),
+  e('dead-bug', 'Dead Bug', ['Core'], 'Bodyweight', 'bw', 45),
+  e('pallof', 'Pallof Press', ['Core'], 'Cable', 'wr', 45),
+  e('back-ext', 'Back Extension', ['Back', 'Glutes'], 'Machine', 'bw', 60),
+  e('cable-lat-raise', 'Cable Lateral Raise', ['Shoulders'], 'Cable', 'wr', 60),
+  e('side-plank', 'Side Plank', ['Core'], 'Bodyweight', 'time', 45),
+  e('bird-dog', 'Bird Dog', ['Core'], 'Bodyweight', 'bw', 45),
+  e('air-bike', 'Air Bike', ['Cardio'], 'Machine', 'timedist', 60),
+];
+
+const item = (id: string, sets: number, reps: number, restSec: number): RoutineItem => ({ exerciseId: 'ex-' + id, sets, reps, restSec });
+
+/** Days 1, 3 and 4 of the plan (reps are the middle of each range). */
+export const PLAN_ROUTINES: Routine[] = [
+  { id: 'rt-plan-d1', name: 'Day 1 · Lower strength', updatedAt: 0, items: [
+    item('squat', 4, 5, 150), item('rdl', 3, 7, 120), item('bulgarian', 3, 9, 90), item('leg-curl', 3, 11, 75),
+    item('calf-raise', 3, 13, 60), item('dead-bug', 3, 8, 45),
+  ] },
+  { id: 'rt-plan-d3', name: 'Day 3 · Upper strength', updatedAt: 0, items: [
+    item('bench', 4, 5, 150), item('lat-pulldown', 4, 7, 120), item('db-shoulder', 3, 9, 90), item('tbar-row', 3, 11, 90),
+    item('cable-lat-raise', 3, 13, 60), item('face-pull', 3, 13, 60), item('db-curl', 2, 11, 60), item('pushdown', 2, 11, 60),
+  ] },
+  { id: 'rt-plan-d4', name: 'Day 4 · Full-body hypertrophy', updatedAt: 0, items: [
+    item('leg-press', 3, 11, 90), item('inc-db-press', 3, 10, 90), item('db-row', 3, 11, 75), item('back-ext', 3, 12, 60),
+    item('pushup', 2, 13, 60), item('pallof', 3, 10, 45),
+  ] },
 ];
