@@ -1,11 +1,13 @@
 import { Overlays, useRoute } from './ui';
 import { Data, Exercises, History, Home, Routines, Summary } from './screens';
 import { SessionScreen } from './session';
+import { Progress } from './progress';
 
 const TABS: [string, string, string][] = [
   ['/', 'Train', '◉'],
   ['/history', 'History', '▦'],
   ['/routines', 'Routines', '☰'],
+  ['/progress', 'Progress', '↗'],
   ['/exercises', 'Lifts', '⚒'],
   ['/data', 'Data', '⛁'],
 ];
@@ -19,6 +21,7 @@ export function App() {
   else if (route === '/history') screen = <History />;
   else if (route === '/routines') screen = <Routines />;
   else if (route === '/exercises') screen = <Exercises />;
+  else if (route === '/progress') screen = <Progress />;
   else if (route === '/data') screen = <Data />;
   else screen = <Home />;
 
