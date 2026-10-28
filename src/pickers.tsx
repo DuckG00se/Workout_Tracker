@@ -23,7 +23,7 @@ export function ExercisePicker({ exclude = [], onClose, onPick }: { exclude?: st
   return (
     <Sheet title="Add exercise" onClose={onClose}>
       <input class="field" type="search" placeholder="Search…" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
-      <Chips options={['All', ...MUSCLES]} value={muscle} onChange={setMuscle} />
+      <Chips options={['All', ...MUSCLES]} value={muscle} onChange={setMuscle} scroll />
       <div class="list">
         {list.map((e) => (
           <button key={e.id} class="list-item" onClick={() => onPick(e)}>

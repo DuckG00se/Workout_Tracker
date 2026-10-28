@@ -8,6 +8,7 @@ export default defineConfig({
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,woff}'], navigateFallback: 'index.html' },
       manifest: {

@@ -43,7 +43,7 @@ export function SessionScreen({ id }: { id: string }) {
         back={active ? '/' : 'back'}
         right={active ? <Elapsed start={session.startedAt} /> : <button class="icon-btn" aria-label="Details" onClick={() => setDetails(true)}>⋯</button>}
       />
-      {!active && <p class="muted pad-x">{parseDate(session.date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>}
+      {!active && <p class="muted pad-x">{parseDate(session.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>}
       <main class="stack">
         {session.exerciseIds.map((exId, idx) => {
           const ex = exMap.get(exId);
@@ -194,15 +194,19 @@ function SetEditor({ s, ex, settings, patch, onDone, onDelete }: {
         <Stepper label="Duration" value={s.duration} step={15} decimals={0} format={fmtDur} onChange={(duration) => patch({ duration })} />
       )}
       {t === 'timedist' && <Stepper label="Distance" unit="km" value={s.distance} step={0.1} onChange={(distance) => patch({ distance })} />}
-      <div class="row gap wrap">
-        <button class={'chip' + (s.warmup ? ' on' : '')} onClick={() => patch({ warmup: !s.warmup })}>Warm-up</button>
-        {t !== 'time' && t !== 'timedist' && [6, 7, 8, 9, 10].map((n) => (
-          <button key={n} class={'chip sq' + (s.rpe === n ? ' on' : '')} aria-label={`RPE ${n}`} onClick={() => patch({ rpe: s.rpe === n ? null : n })}>{n}</button>
-        ))}
-        {t !== 'time' && t !== 'timedist' && <span class="muted sm">RPE</span>}
-      </div>
+      {t !== 'time' && t !== 'timedist' && (
+        <div class="stepper">
+          <span class="stepper-label">RPE (optional)</span>
+          <div class="rpe">
+            {[6, 7, 8, 9, 10].map((n) => (
+              <button key={n} class={'chip sq' + (s.rpe === n ? ' on' : '')} aria-label={`RPE ${n}`} aria-pressed={s.rpe === n} onClick={() => patch({ rpe: s.rpe === n ? null : n })}>{n}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div class="row gap">
         <button class="btn ghost" onClick={onDelete} aria-label="Delete set">🗑</button>
+        <button class={'chip' + (s.warmup ? ' on' : '')} aria-pressed={s.warmup} onClick={() => patch({ warmup: !s.warmup })}>Warm-up</button>
         <button class="btn primary grow big" onClick={onDone}>{s.done ? 'Close' : 'Done ✓'}</button>
       </div>
     </div>

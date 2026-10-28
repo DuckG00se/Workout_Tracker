@@ -32,6 +32,9 @@ export async function importJSON(text: string) {
   if (d.app !== 'gym-tracker' || !Array.isArray(d.sessions) || !Array.isArray(d.sets) || !Array.isArray(d.exercises)) {
     throw new Error('Not a Logbook backup file');
   }
+  // The restored data matches the file it came from, so keep the reminder clock at the newer of the two.
+  const prevExport = ((await db.meta.get('lastExport'))?.value as number | undefined) ?? 0;
+  const fileExport = Date.parse(d.exportedAt) || 0;
   await db.transaction('rw', [db.exercises, db.routines, db.sessions, db.sets, db.meta], async () => {
     await Promise.all([db.exercises.clear(), db.routines.clear(), db.sessions.clear(), db.sets.clear(), db.meta.clear()]);
     await db.exercises.bulkPut(d.exercises);
@@ -39,6 +42,8 @@ export async function importJSON(text: string) {
     await db.sessions.bulkPut(d.sessions);
     await db.sets.bulkPut(d.sets);
     await db.meta.bulkPut([...(d.meta ?? []), { key: 'seeded', value: true }]);
+    const last = Math.max(prevExport, fileExport);
+    if (last) await db.meta.put({ key: 'lastExport', value: last });
   });
   const theme = (await db.meta.get('theme'))?.value;
   if (theme === 'light' || theme === 'dark') await setSetting('theme', theme);

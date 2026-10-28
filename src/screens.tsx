@@ -75,7 +75,7 @@ function SessionList({ sessions }: { sessions: import('./types').Session[] }) {
         const vol = mine.reduce((a, x) => a + setVolume(x, types.get(x.exerciseId) ?? 'wr'), 0);
         return (
           <button key={s.id} class="list-item" onClick={() => go(`/session/${s.id}`)}>
-            <span>{parseDate(s.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · {s.routineName || 'Workout'}</span>
+            <span>{parseDate(s.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · {s.routineName || 'Workout'}</span>
             <small class="muted">{mine.length} sets · {fmtVol(vol)}{s.endedAt ? ` · ${fmtMin(s.endedAt - s.startedAt)}` : ''}</small>
           </button>
         );
@@ -102,7 +102,7 @@ export function History() {
         <section class="card cal">
           <div class="row between">
             <button class="icon-btn" aria-label="Previous month" onClick={() => { setDay(null); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
-            <b>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</b>
+            <b>{month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</b>
             <button class="icon-btn" aria-label="Next month" onClick={() => { setDay(null); setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); }}>›</button>
           </div>
           <div class="cal-grid">
@@ -143,7 +143,7 @@ export function Summary({ id }: { id: string }) {
     <div class="screen">
       <Header title="Workout complete" back="/" />
       <main class="stack">
-        <p class="eyebrow">{parseDate(session.date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}{session.routineName ? ` · ${session.routineName}` : ''}</p>
+        <p class="eyebrow">{parseDate(session.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}{session.routineName ? ` · ${session.routineName}` : ''}</p>
         <div class="stats">
           <div><b class="num">{fmtMin(dur)}</b><small>Duration</small></div>
           <div><b class="num">{fmtVol(vol)}</b><small>Volume</small></div>
@@ -193,7 +193,7 @@ export function Exercises() {
       <Header title="Exercises" right={<button class="btn primary small" onClick={() => setEdit(blank())}>+ New</button>} />
       <main class="stack">
         <input class="field" type="search" placeholder="Search…" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
-        <Chips options={['All', ...MUSCLES]} value={muscle} onChange={setMuscle} />
+        <Chips options={['All', ...MUSCLES]} value={muscle} onChange={setMuscle} scroll />
         <div class="list">
           {list.map((e) => (
             <button key={e.id} class="list-item" onClick={() => setEdit(e)}>
@@ -317,7 +317,7 @@ export function Data() {
       <main class="stack">
         <section class="card pad stack">
           <h2 class="sec">Backup</h2>
-          <p class="muted sm">{s.lastExport ? `Last backup: ${new Date(s.lastExport).toLocaleDateString()}` : 'No backup yet.'} Storage is {persisted ? 'protected' : 'not guaranteed'} on this device.</p>
+          <p class="muted sm">{s.lastExport ? `Last backup: ${new Date(s.lastExport).toLocaleDateString('en-GB')}` : 'No backup yet.'} Storage is {persisted ? 'protected' : 'not guaranteed'} on this device.</p>
           <button class="btn primary wide" onClick={async () => { await exportJSON(); toast('Backup saved'); }}>Export full backup (JSON)</button>
           <button class="btn ghost wide" onClick={() => exportCSV()}>Export sets (CSV)</button>
           <label class="btn ghost wide filebtn">Import backup…

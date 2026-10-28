@@ -106,11 +106,11 @@ export function Stepper({ label, value, step, min = 0, max = 100000, format, onC
   );
 }
 
-export function Chips<T extends string | number>({ options, value, onChange, render }: {
-  options: T[]; value: T | null; onChange: (v: T) => void; render?: (v: T) => string;
+export function Chips<T extends string | number>({ options, value, onChange, render, scroll }: {
+  options: T[]; value: T | null; onChange: (v: T) => void; render?: (v: T) => string; scroll?: boolean;
 }) {
   return (
-    <div class="chips">
+    <div class={'chips' + (scroll ? ' scroll' : '')}>
       {options.map((o) => (
         <button key={String(o)} class={'chip' + (o === value ? ' on' : '')} onClick={() => onChange(o)}>{render ? render(o) : String(o)}</button>
       ))}
